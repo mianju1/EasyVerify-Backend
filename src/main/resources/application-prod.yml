@@ -1,0 +1,48 @@
+server:
+  port: ${PORT:10086}
+springdoc:
+  paths-to-match: /api/**
+  swagger-ui:
+    operations-sorter: alpha
+    path: /swagger-ui
+spring:
+  mail:
+    host: ${MAIL_HOST}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+  rabbitmq:
+    addresses: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: /
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:easy_db}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  security:
+    jwt:
+      key: ${JWT_KEY:qwertyuiop}
+      expire: ${JWT_EXPIRE:72}
+      limit:
+        base: 15
+        upgrade: 300
+        frequency: 30
+  web:
+    cors:
+      origin: '*'
+      credentials: false
+      methods: '*'
+    verify:
+      mail-limit: ${MAIL_LIMIT:60}
+    flow:
+      limit:
+        time: ${FLOW_LIMIT_TIME:10}
+        count: ${FLOW_LIMIT_COUNT:50}
+        period: ${FLOW_LIMIT_PERIOD:10}
