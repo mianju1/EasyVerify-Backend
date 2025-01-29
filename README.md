@@ -68,7 +68,7 @@ services:
     working_dir: /app
     environment:
       - NODE_ENV=production
-      - TZ=Asia/Shanghai
+      # ... 按照下面配置要求填写环境变量
     ports:
       - "2121:2121" # 前端项目映射端口
     volumes:
@@ -86,6 +86,7 @@ services:
 
 以下环境变量需要在运行项目前配置，以确保系统正常运行：
 
+**EasyVerify-Backend:**
 ```bash
 # 服务端口号
 - PORT=10086
@@ -124,6 +125,16 @@ services:
 - FLOW_LIMIT_TIME=your_flow_limit_time      # 流量限制时间窗口（单位：秒）
 - FLOW_LIMIT_COUNT=your_flow_limit_count    # 流量限制请求次数
 - FLOW_LIMIT_PERIOD=your_flow_limit_period  # 流量限制周期（单位：秒）
+
+# 时区配置
+- TZ=your_timezone                  # 系统时区（例如：Asia/Shanghai）
+```
+
+**EasyVerify-Web:**
+```bash
+# 后端接口地址配置
+- PUBLIC_API_URL=http://localhost:10086  # 后端接口地址 注意最后不要带 /
+- PUBLIC_WEB_PORT=2121  # web端口号
 
 # 时区配置
 - TZ=your_timezone                  # 系统时区（例如：Asia/Shanghai）
