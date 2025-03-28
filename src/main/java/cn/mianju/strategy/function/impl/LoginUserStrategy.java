@@ -13,9 +13,8 @@ import java.security.NoSuchAlgorithmException;
 public class LoginUserStrategy implements FunctionStrategy {
 
     @Override
-    public RestBean<?> execute(TUserService tUserService,String body, VInterfaceinfo interfaceInfo, EncryptInfo encryptInfo) throws NoSuchAlgorithmException {
+    public RestBean<String> execute(TUserService tUserService,String body, VInterfaceinfo interfaceInfo, EncryptInfo encryptInfo) throws NoSuchAlgorithmException {
         LoginUserVO loginUserVO = JSON.parseObject(body, LoginUserVO.class);
-        String message = tUserService.loginUser(loginUserVO, interfaceInfo);
-        return message == null ? RestBean.success() : RestBean.failure(400, message);
+        return tUserService.loginUser(loginUserVO, interfaceInfo);
     }
 }

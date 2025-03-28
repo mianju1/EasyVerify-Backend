@@ -20,7 +20,7 @@ public interface TUserService extends IService<TUser> {
     String registerUser(@Validated RegisterUserVO vo, VInterfaceinfo interfaceInfo) throws NoSuchAlgorithmException;
 
     // 1-登录用户
-    String loginUser(@Validated LoginUserVO vo, VInterfaceinfo interfaceInfo) throws NoSuchAlgorithmException;
+    RestBean<String> loginUser(@Validated LoginUserVO vo, VInterfaceinfo interfaceInfo) throws NoSuchAlgorithmException;
 
     // 2-激活码登录
     String loginCode(@Validated LoginCodeVO vo, VInterfaceinfo interfaceInfo);

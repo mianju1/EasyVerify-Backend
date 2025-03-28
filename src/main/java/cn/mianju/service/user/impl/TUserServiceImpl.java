@@ -1,5 +1,6 @@
 package cn.mianju.service.user.impl;
 
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.mianju.annotation.FlowLimit;
 import cn.mianju.entity.EncryptInfo;
@@ -26,7 +27,7 @@ import cn.mianju.utils.RedisUtils;
 import cn.mianju.utils.SnowflakeIdGenerator;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
-import jakarta.validation.constraints.NotNull;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -38,6 +39,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Service
+@Slf4j
 public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         implements TUserService {
 
@@ -185,14 +187,14 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
     @FlowLimit
     @Override
-    public String loginUser(@Validated LoginUserVO vo, VInterfaceinfo interfaceInfo) throws NoSuchAlgorithmException {
+    public RestBean<String> loginUser(@Validated LoginUserVO vo, VInterfaceinfo interfaceInfo) throws NoSuchAlgorithmException {
         String username = vo.getUsername();
         String password = EncryptUtils.sha256Encode(vo.getPassword());
         String sId = interfaceInfo.getSId();
         Integer sCodetype = interfaceInfo.getSCodetype();
 
 
-        if (sCodetype.equals(2)) return "激活码请使用 激活码方式 登录";
+        if (sCodetype.equals(2)) return RestBean.failure(400, "激活码请使用 激活码方式 登录");
 
 
         VUserinfo userinfo = vUserinfoService.query()
@@ -202,11 +204,15 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 .eq("s_id", sId)
                 .one();
 
-        if (Objects.isNull(userinfo)) return "用户名或密码错误";
-        if (sCodetype.equals(1) && this.isExpiredAccount(username, sId)) return "账号已过期";
-        if (userinfo.getCScore().equals(0)) return "该用户当前限制登录，请联系相关人员";
+        if (Objects.isNull(userinfo)) return RestBean.failure(400, "用户名或密码错误");
+        if (sCodetype.equals(1) && this.isExpiredAccount(username, sId)) return RestBean.failure(400, "账号已过期");
+        if (userinfo.getCScore().equals(0)) return RestBean.failure(400, "该用户当前限制登录，请联系相关人员");
 
-        return null;
+        // 生成id码，并返回
+        String idCode = createIdCode();
+        boolean b = setIdCode(sId, username, idCode);
+
+        return b ? RestBean.success(idCode, "登陆成功") : RestBean.failure(400, "登录失败");
     }
 
     @FlowLimit
@@ -403,12 +409,28 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
     /**
      * 身份码校验
-     * @param sid 软件唯一标识
+     *
+     * @param sid  软件唯一标识
      * @param name 用户名
-     * @param idCode 用户身份码
      * @return
      */
-    private String checkIdCode(String sid,String name,String idCode){
+    private boolean checkIdCode(String sid, String name, String idCode) {
+        String key = String.format("Sid-%s-User-%s:IdCode", sid, name);
+        // 从redis获取身份码
+        String value = String.valueOf(redisUtils.get(key));
+
+        // 获取不到或者空则说明身份码不存在或者过期
+        return !StrUtil.isEmptyIfStr(value) && value.equals(idCode);
+    }
+
+    /**
+     * 获取redis中身份码
+     *
+     * @param sid  软件唯一标识
+     * @param name 用户名
+     * @return
+     */
+    private String getIdCode(String sid, String name) {
         String key = String.format("Sid-%s-User-%s:IdCode", sid, name);
         // 从redis获取身份码
         String value = String.valueOf(redisUtils.get(key));
@@ -419,15 +441,51 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
     /**
      * redis设置身份码
-     * @param sid 软件唯一标识
-     * @param name 用户名
+     *
+     * @param sid    软件唯一标识
+     * @param name   用户名
      * @param idCode 用户身份码
      * @return
      */
-    private boolean setIdCode(String sid,String name,String idCode){
-        String key = String.format("Sid-%s-User-%s:IdCode",sid, name);
-        // 设置身份码过期时间，默认为：12小时
+    private boolean setIdCode(String sid, String name, String idCode) {
+        String key = String.format("Sid-%s-User-%s:IdCode", sid, name);
+        log.info("redis设置身份码 - key:{} | value: {} ", key, idCode);
+        // 设置身份码过期时间，默认为：4小时
         return redisUtils.set(key, idCode, userIdCodeSec);
+    }
+
+
+    /**
+     * 更新身份码有效时间
+     *
+     * @param sid
+     * @param name
+     * @param idCode
+     * @return
+     */
+    private boolean updateIdCode(String sid, String name, String idCode) {
+        String key = String.format("Sid-%s-User-%s:IdCode", sid, name);
+        // 更新身份码过期时间
+        log.info("redis更新身份码过期时间 - key:{} | value: {} ", key, idCode);
+
+        // 判断是否存在key，如果存在则更新过期时间
+        if (redisUtils.hasKey(key)) {
+            long expire = redisUtils.getExpire(key);
+            if (expire > 0) {
+                return redisUtils.expire(key, userIdCodeSec);
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 创建身份码
+     *
+     * @return 身份码
+     */
+    private static String createIdCode() {
+        // 生成随机32位大写字符串作为身份码
+        return IdUtil.fastSimpleUUID().toUpperCase();
     }
 
 
