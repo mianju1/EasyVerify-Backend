@@ -1,5 +1,6 @@
 package cn.mianju.service.user.impl;
 
+import cn.hutool.core.util.StrUtil;
 import cn.mianju.annotation.FlowLimit;
 import cn.mianju.entity.EncryptInfo;
 import cn.mianju.entity.RestBean;
@@ -21,9 +22,12 @@ import cn.mianju.service.user.VUserinfoService;
 import cn.mianju.service.web.VInterfaceinfoService;
 import cn.mianju.strategy.function.FunctionContext;
 import cn.mianju.utils.EncryptUtils;
+import cn.mianju.utils.RedisUtils;
 import cn.mianju.utils.SnowflakeIdGenerator;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
+import jakarta.validation.constraints.NotNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.validation.annotation.Validated;
@@ -36,6 +40,9 @@ import java.util.Objects;
 @Service
 public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         implements TUserService {
+
+    @Value("${spring.web.verify.user-id-code-second}")
+    private Integer userIdCodeSec;
 
     @Resource
     SnowflakeIdGenerator snowflakeIdGenerator;
@@ -55,6 +62,9 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
     @Resource
     TransactionTemplate transactionTemplate;
+
+    @Resource
+    RedisUtils redisUtils;
 
 
     @Override
@@ -93,6 +103,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     @FlowLimit
     @Override
     public String registerUser(@Validated RegisterUserVO vo, VInterfaceinfo interfaceInfo) throws NoSuchAlgorithmException {
+        if (Objects.isNull(vo) || vo.getUsername().isBlank() || vo.getPassword().isBlank()) return "参数不能为空!";
+
         String username = vo.getUsername();
         String password = EncryptUtils.sha256Encode(vo.getPassword());
         String registerCode = vo.getCode();
@@ -388,6 +400,37 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 .eq("s_key", key)
                 .one();
     }
+
+    /**
+     * 身份码校验
+     * @param sid 软件唯一标识
+     * @param name 用户名
+     * @param idCode 用户身份码
+     * @return
+     */
+    private String checkIdCode(String sid,String name,String idCode){
+        String key = String.format("Sid-%s-User-%s:IdCode", sid, name);
+        // 从redis获取身份码
+        String value = String.valueOf(redisUtils.get(key));
+
+        // 获取不到或者空则说明身份码不存在或者过期
+        return StrUtil.isEmptyIfStr(value) ? null : value;
+    }
+
+    /**
+     * redis设置身份码
+     * @param sid 软件唯一标识
+     * @param name 用户名
+     * @param idCode 用户身份码
+     * @return
+     */
+    private boolean setIdCode(String sid,String name,String idCode){
+        String key = String.format("Sid-%s-User-%s:IdCode",sid, name);
+        // 设置身份码过期时间，默认为：12小时
+        return redisUtils.set(key, idCode, userIdCodeSec);
+    }
+
+
 }
 
 
