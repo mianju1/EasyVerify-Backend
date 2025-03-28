@@ -41,7 +41,7 @@ spring:
       methods: '*'
     verify:
       mail-limit: ${MAIL_LIMIT:60}
-      user-id-code-second: ${USER_ID_CODE_SECOND:43200}
+      user-id-code-second: ${USER_ID_CODE_SECOND:14400}
     flow:
       limit:
         time: ${FLOW_LIMIT_TIME:10}
