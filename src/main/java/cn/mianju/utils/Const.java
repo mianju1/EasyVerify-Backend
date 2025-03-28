@@ -78,7 +78,8 @@ public final class Const {
             7, """
                     {
                         "username": "用户名"(必填),
-                        "password": "新密码"(必填)
+                        "password": "新密码"(必填),
+                        "idCode": "身份码"(必填)
                     }
                     """
     );
