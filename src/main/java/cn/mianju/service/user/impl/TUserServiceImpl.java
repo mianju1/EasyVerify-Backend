@@ -356,7 +356,18 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     public String updateUserPassword(UpdateUserPasswordVO vo, VInterfaceinfo interfaceInfo) throws NoSuchAlgorithmException {
         String sId = interfaceInfo.getSId();
         String username = vo.getUsername();
+        String idCode = vo.getIdCode();
+        // 校验参数
+        if (StrUtil.isEmptyIfStr(sId) || StrUtil.isEmptyIfStr(username) || StrUtil.isEmptyIfStr(idCode)) return "参数不能为空";
+        if (idCode.length() != 32) return "身份码不合法";
+
+        // 敏感操作 需要校验身份码
+        boolean checked = checkIdCode(sId, username, idCode);
+        if (!checked) return "身份码校验失败";
+
+        // 更新密码 与 身份码有效期
         String password = EncryptUtils.sha256Encode(vo.getPassword());
+        updateIdCode(sId, username, idCode);
 
         boolean update = this.update()
                 .eq("s_id", sId)

@@ -13,4 +13,8 @@ public class UpdateUserPasswordVO {
     @NotNull
     @Length(min = 4, max = 20)
     String password;
+
+    @NotNull
+    @Length(min = 32, max = 32)
+    String idCode;
 }
