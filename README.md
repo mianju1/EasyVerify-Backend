@@ -126,6 +126,9 @@ services:
 - FLOW_LIMIT_COUNT=your_flow_limit_count    # 流量限制请求次数
 - FLOW_LIMIT_PERIOD=your_flow_limit_period  # 流量限制周期（单位：秒）
 
+# 用户身份码有效时间
+- USER_ID_CODE_SECOND=your_user_id_code_second  # 用户身份码有效时间（单位：秒）
+
 # 时区配置
 - TZ=your_timezone                  # 系统时区（例如：Asia/Shanghai）
 ```
