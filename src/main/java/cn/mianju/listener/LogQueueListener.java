@@ -53,6 +53,6 @@ public class LogQueueListener {
         request.setRResponse(Objects.isNull(response) ? null : response.toString());
 
         // 将请求记录存入数据库
-        requestMapper.insert(request);
+        requestMapper.insertOrUpdate(request);
     }
 }
