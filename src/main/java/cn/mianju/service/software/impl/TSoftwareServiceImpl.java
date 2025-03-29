@@ -2,16 +2,21 @@ package cn.mianju.service.software.impl;
 
 import cn.mianju.annotation.FlowLimit;
 import cn.mianju.entity.RestBean;
+import cn.mianju.entity.dto.TEncrypt;
 import cn.mianju.entity.dto.TSoftware;
 import cn.mianju.entity.vo.request.PageVO;
+import cn.mianju.entity.vo.request.encrypt.AddEncryptVO;
 import cn.mianju.entity.vo.request.software.*;
 import cn.mianju.entity.vo.response.software.SoftwareShowVO;
 import cn.mianju.entity.vo.response.software.SoftwareTypeVO;
 import cn.mianju.exception.RequestFrequencyException;
 import cn.mianju.mapper.TSoftwareMapper;
+import cn.mianju.service.encrypt.TEncryptService;
+import cn.mianju.service.encrypt.VEncryptinfoService;
 import cn.mianju.service.software.TSoftwareService;
 import cn.mianju.utils.IpUtil;
 import cn.mianju.utils.JwtUtils;
+import cn.mianju.utils.SnowflakeIdGenerator;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -21,6 +26,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -38,7 +44,11 @@ public class TSoftwareServiceImpl extends ServiceImpl<TSoftwareMapper, TSoftware
 
     @Resource
     HttpServletRequest request;
+    @Resource
+    TEncryptService tEncryptService;
 
+    @Resource
+    SnowflakeIdGenerator snowflakeIdGenerator;
     @Resource
     JwtUtils jwtUtils;
 
@@ -114,6 +124,8 @@ public class TSoftwareServiceImpl extends ServiceImpl<TSoftwareMapper, TSoftware
         // 生成16位字符串UUID作为软件密钥key
         String key = UUID.randomUUID().toString().substring(0, 18).toUpperCase().replace("-", "");
 
+        String sid = String.valueOf(snowflakeIdGenerator.nextId());
+        software.setSId(sid);
         software.setSName(vo.getName());
         software.setSVersion(vo.getVersion());
         software.setSDesc(vo.getDesc());
@@ -122,12 +134,22 @@ public class TSoftwareServiceImpl extends ServiceImpl<TSoftwareMapper, TSoftware
         software.setSKey(key);
         software.setCreateAddress(ip);
         software.setCreateTime(new Date());
+        // 新增软件时默认先生成无加密算法
+        AddEncryptVO defautlEncryptVo = new AddEncryptVO();
+        defautlEncryptVo.setSid(sid);
+        defautlEncryptVo.setEncryption(0);
 
-        if (!this.save(software)) {
-            return "内部错误，注册失败";
-        } else {
-            return null;
+        try {
+            if (!this.save(software)) {
+                return "内部错误，注册失败";
+            } else {
+                tEncryptService.addEncrypt(defautlEncryptVo);
+                return null;
+            }
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
         }
+
     }
 
     @FlowLimit

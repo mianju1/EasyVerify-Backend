@@ -10,7 +10,7 @@ import org.hibernate.validator.constraints.Length;
  */
 @Data
 public class GetInterfaceVO {
-    @Length(min = 19, max = 20)
+    @Length(min = 18, max = 20)
     String sid;
     PageVO page;
 }
