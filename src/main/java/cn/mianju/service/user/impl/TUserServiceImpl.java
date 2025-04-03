@@ -128,7 +128,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         Integer cType;
         // 如果需要注册码则验证注册码
         if (codeType.equals(1)) {
-            if (registerCode.isEmpty()) return "参数有误";
+            if (Objects.isNull(registerCode) || registerCode.isEmpty()) return "邀请码不能为空";
             VCodeinfo codeInfo = vCodeinfoService.query()
                     .select("c_id", "c_timetype")
                     .eq("s_id", sId)    // 查询指定软件id
@@ -198,7 +198,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
 
         VUserinfo userinfo = vUserinfoService.query()
-                .select("u_id", "c_score", "c_name")
+                .select("u_id", "u_status", "c_score", "c_name")
                 .eq("u_name", username)
                 .eq("u_password", password)
                 .eq("s_id", sId)
@@ -206,7 +206,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
         if (Objects.isNull(userinfo)) return RestBean.failure(400, "用户名或密码错误");
         if (sCodetype.equals(1) && this.isExpiredAccount(username, sId)) return RestBean.failure(400, "账号已过期");
-        if (userinfo.getCScore().equals(0)) return RestBean.failure(400, "该用户当前限制登录，请联系相关人员");
+        if (userinfo.getUStatus().equals(0)) return RestBean.failure(400, "当前账号已被限制,请联系管理员");
+        if (sCodetype.equals(2) && userinfo.getCScore().equals(0)) return RestBean.failure(400, "积分不足，登录失败");
 
         // 生成id码，并返回
         String idCode = createIdCode();
@@ -358,7 +359,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         String username = vo.getUsername();
         String idCode = vo.getIdCode();
         // 校验参数
-        if (StrUtil.isEmptyIfStr(sId) || StrUtil.isEmptyIfStr(username) || StrUtil.isEmptyIfStr(idCode)) return "参数不能为空";
+        if (StrUtil.isEmptyIfStr(sId) || StrUtil.isEmptyIfStr(username) || StrUtil.isEmptyIfStr(idCode))
+            return "参数不能为空";
         if (idCode.length() != 32) return "身份码不合法";
 
         // 敏感操作 需要校验身份码
@@ -377,6 +379,9 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
         return update ? null : "修改失败";
     }
+
+    // todo 加一个查看当前用户是否有效的功能，使用idcode
+
 
     private EncryptInfo getEncryptInfo(String sid, Integer encryption) {
         VEncryptinfo one = vEncryptinfoService.query()

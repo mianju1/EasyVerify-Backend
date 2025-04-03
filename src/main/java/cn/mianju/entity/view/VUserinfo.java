@@ -33,6 +33,12 @@ public class VUserinfo implements Serializable {
     private String uMail;
 
     /**
+     * 用户状态：-1-启用 0-禁用
+     */
+    @TableField(value = "u_status")
+    private Integer uStatus;
+
+    /**
      * 用户密码（SHA256）
      */
     @TableField(value = "u_password")

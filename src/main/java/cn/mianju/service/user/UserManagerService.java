@@ -2,6 +2,7 @@ package cn.mianju.service.user;
 
 import cn.mianju.entity.RestBean;
 import cn.mianju.entity.dto.TUser;
+import cn.mianju.entity.vo.request.user.BanUserVO;
 import cn.mianju.entity.vo.request.user.DeleteUserVO;
 import cn.mianju.entity.vo.request.user.UpdateOneUserVO;
 import cn.mianju.entity.vo.request.user.UserSeachVO;
@@ -20,4 +21,7 @@ public interface UserManagerService extends IService<TUser> {
 
     // 删除用户
     String deleteManagerUserOne(DeleteUserVO vo);
+
+    // 禁用用户
+    String banMangerUserOne(BanUserVO vo);
 }

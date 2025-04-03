@@ -10,4 +10,5 @@ public class UserListVO {
    String username;
    Date expiredTime;
    Date loginTime;
+   Integer status;
 }

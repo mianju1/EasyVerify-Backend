@@ -75,4 +75,11 @@ public class UserController {
         return message == null ? RestBean.success() : RestBean.failure(400, message);
     }
 
+    @PostMapping("/manager-user-ban")
+    @Operation(summary = "禁用指定用户")
+    public RestBean<Void> banManagerUser(@RequestBody @Validated DeleteUserVO vo) {
+        String message = userManagerService.deleteManagerUserOne(vo);
+        return message == null ? RestBean.success() : RestBean.failure(400, message);
+    }
+
 }

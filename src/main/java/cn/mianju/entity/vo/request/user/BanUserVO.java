@@ -6,10 +6,9 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class DeleteUserVO {
+public class BanUserVO {
     @NotNull(message = "软件id不能为空")
-    String sid;
+    private String sid;
 
-    List<String> code;
     List<String> username;
 }
