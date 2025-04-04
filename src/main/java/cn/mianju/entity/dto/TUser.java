@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.util.Date;
+
 /**
  * @author 10408
  * @TableName t_user
@@ -32,6 +34,11 @@ public class TUser {
      * 用户密码（SHA256）
      */
     private String uPassword;
+
+    /**
+     * 用户最近登陆时间
+     */
+    private Date uLastloginTime;
 
     /**
      * 用户所属软件ID

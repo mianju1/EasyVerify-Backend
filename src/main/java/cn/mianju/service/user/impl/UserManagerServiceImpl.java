@@ -49,26 +49,27 @@ public class UserManagerServiceImpl extends ServiceImpl<TUserMapper, TUser>
         String keyword = vo.getKeyword();
         PageVO page = vo.getPage();
 
-
         IPage<VUserinfo> pageInfo = new Page<>(page.getCurrentPage(), page.getPageSize());
+
+        // 查询用户信息
         QueryWrapper<VUserinfo> wrapper = new QueryWrapper<>();
-        wrapper.select("s_name", "u_name", "c_expired","u_status")
+        wrapper.select("s_name", "u_name", "c_expired", "u_status", "u_lastlogin_time")
                 .eq("d_id", dId)
                 .eq("s_id", sid)
                 .like(!keyword.isEmpty(), "u_name", keyword);
 
+
         IPage<VUserinfo> responsePage = vUserinfoService.page(pageInfo, wrapper);
         List<VUserinfo> records = responsePage.getRecords();
         Long total = responsePage.getTotal();
-
 
         List<UserListVO> list = records.stream().map(vUserinfo -> {
             UserListVO userListVO = new UserListVO();
             userListVO.setSname(vUserinfo.getSName());
             userListVO.setUsername(vUserinfo.getUName());
             userListVO.setExpiredTime(vUserinfo.getCExpired());
-            userListVO.setLoginTime(null);
             userListVO.setStatus(vUserinfo.getUStatus());
+            userListVO.setLoginTime(vUserinfo.getULastloginTime());
 
             return userListVO;
         }).toList();
@@ -139,13 +140,20 @@ public class UserManagerServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 .eq("s_id", sid)
                 .in("u_name", username)
                 .list();
-        if (list.isEmpty()) return "用户不存在";
 
         List<String> uidList = list.stream().map(VUserinfo::getUId).toList();
+        if (list.isEmpty() || uidList.isEmpty()) return "用户不存在";
 
+        // 禁用用户
+        boolean update = this.update()
+                .eq("s_id", sid)
+                .in("u_id", uidList)
+                .set("u_status", vo.getStatus())
+                .update();
 
-        return "";
+        return update ? null : "用户信息修改失败";
     }
+
 
     // 获取用户ID
     private String getUserId() {

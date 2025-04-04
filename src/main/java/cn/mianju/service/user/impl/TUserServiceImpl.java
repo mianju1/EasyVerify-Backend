@@ -25,6 +25,7 @@ import cn.mianju.strategy.function.FunctionContext;
 import cn.mianju.utils.EncryptUtils;
 import cn.mianju.utils.RedisUtils;
 import cn.mianju.utils.SnowflakeIdGenerator;
+import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +62,8 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
     TCodeServiceImpl tCodeService;
     @Resource
     TSoftwareService tSoftwareService;
+    @Resource
+    TUserMapper userMapper;
 
     @Resource
     TransactionTemplate transactionTemplate;
@@ -94,6 +97,11 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         } else {
             body = jsonBody;
             encryptInfo = null;
+            try {
+                JSON.parseObject(body);
+            } catch (Exception e) {
+                return RestBean.failure(400, "请求参数格式错误,请使用json格式");
+            }
         }
 
         // 策略模式执行
@@ -207,7 +215,13 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         if (Objects.isNull(userinfo)) return RestBean.failure(400, "用户名或密码错误");
         if (sCodetype.equals(1) && this.isExpiredAccount(username, sId)) return RestBean.failure(400, "账号已过期");
         if (userinfo.getUStatus().equals(0)) return RestBean.failure(400, "当前账号已被限制,请联系管理员");
-        if (sCodetype.equals(2) && userinfo.getCScore().equals(0)) return RestBean.failure(400, "积分不足，登录失败");
+        if (sCodetype.equals(1) && userinfo.getCScore().equals(0)) return RestBean.failure(400, "积分不足，登录失败");
+
+        // 更新用户最近登陆时间
+        TUser user = new TUser();
+        user.setUId(userinfo.getUId());
+        user.setULastloginTime(new Date());
+        userMapper.updateById(user);
 
         // 生成id码，并返回
         String idCode = createIdCode();
@@ -218,14 +232,14 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
     @FlowLimit
     @Override
-    public String loginCode(LoginCodeVO vo, VInterfaceinfo interfaceInfo) {
+    public RestBean<String> loginCode(LoginCodeVO vo, VInterfaceinfo interfaceInfo) {
         String code = vo.getCode().strip();
         String mac = vo.getMac();
         String sId = interfaceInfo.getSId();
         Integer sVerifyMac = interfaceInfo.getSVerifyMac();
 
-        if (Objects.isNull(mac)) return "参数有误";
-        if (!interfaceInfo.getSCodetype().equals(2)) return "非激活码用户请使用账号登录";
+        if (sVerifyMac.equals(1) && Objects.isNull(mac)) return RestBean.failure(400, "机器码不能为空");
+        if (!interfaceInfo.getSCodetype().equals(2)) return RestBean.failure(400, "非激活码用户请使用账号登录");
 
         VCodeinfo one = vCodeinfoService.query()
                 .select("c_id", "c_score", "c_name", "c_usetime", "c_timetype")
@@ -234,15 +248,17 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                 .one();
 
 
-        if (Objects.isNull(one)) return "激活码有误";
+        if (Objects.isNull(one)) return RestBean.failure(400, "激活码有误");
         boolean isUsed = !Objects.isNull(one.getCUsetime());
 
         if (sVerifyMac.equals(1) && (!Objects.isNull(one.getCName()) && !mac.equals(one.getCName())))
-            return "机器码有误";
-        if (one.getCScore().equals(0)) return "当前激活码已被禁用，请联系相关人员";
-        if (isUsed && isExpiredCode(code, sId)) return "激活码已过期";
+            return RestBean.failure(400, "机器码有误");
+        if (one.getCScore().equals(0)) return RestBean.failure(400, "当前激活码已被禁用，请联系相关人员");
+        if (isUsed && isExpiredCode(code, sId)) return RestBean.failure(400, "激活码已过期");
 
-        boolean update = true;
+        boolean update = false;
+
+        if (StrUtil.isEmptyIfStr(mac)) mac = null;
 
         if (!isUsed || sVerifyMac.equals(1)) {
             // 修改激活码信息
@@ -254,7 +270,14 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
                     .update();
         }
 
-        return update ? null : "登录失败";
+        if (update) {
+            // 生成id码，并返回
+            String idCode = createIdCode();
+            boolean b = setIdCode(sId, one.getCName(), idCode);
+
+            return b ? RestBean.success(idCode, "登陆成功") : RestBean.failure(400, "登录失败");
+        }
+        return RestBean.failure(400, "登录失败");
     }
 
     @FlowLimit

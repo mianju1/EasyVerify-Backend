@@ -1,10 +1,7 @@
 package cn.mianju.controller.user;
 
 import cn.mianju.entity.RestBean;
-import cn.mianju.entity.vo.request.user.DeleteUserVO;
-import cn.mianju.entity.vo.request.user.UpdateOneUserVO;
-import cn.mianju.entity.vo.request.user.UpdateUserVO;
-import cn.mianju.entity.vo.request.user.UserSeachVO;
+import cn.mianju.entity.vo.request.user.*;
 import cn.mianju.entity.vo.response.code.UserShowVO;
 import cn.mianju.entity.vo.response.user.UserListVO;
 import cn.mianju.service.code.TCodeService;
@@ -75,10 +72,10 @@ public class UserController {
         return message == null ? RestBean.success() : RestBean.failure(400, message);
     }
 
-    @PostMapping("/manager-user-ban")
-    @Operation(summary = "禁用指定用户")
-    public RestBean<Void> banManagerUser(@RequestBody @Validated DeleteUserVO vo) {
-        String message = userManagerService.deleteManagerUserOne(vo);
+    @PostMapping("/manager-user-change")
+    @Operation(summary = "切换指定用户状态")
+    public RestBean<Void> banManagerUser(@RequestBody @Validated BanUserVO vo) {
+        String message = userManagerService.banMangerUserOne(vo);
         return message == null ? RestBean.success() : RestBean.failure(400, message);
     }
 

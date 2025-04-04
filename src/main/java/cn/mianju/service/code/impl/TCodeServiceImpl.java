@@ -1,5 +1,6 @@
 package cn.mianju.service.code.impl;
 
+import cn.hutool.core.util.StrUtil;
 import cn.mianju.annotation.FlowLimit;
 import cn.mianju.entity.RestBean;
 import cn.mianju.entity.dto.TCode;
@@ -166,8 +167,8 @@ public class TCodeServiceImpl extends ServiceImpl<TCodeMapper, TCode>
                 .eq("c_type", Const.CODE_TYPE_ACTIVATION) // 写死因为2是激活码 只有激活码才能修改机器码
                 .in("c_code", vo.getCode())
                 .in("c_code", codes.stream().map(TCode::getCCode).toList())
-                .set(!machine.isEmpty(),"c_name", machine)
-                .set(machine.isEmpty(),"c_name", null)
+                .set(!machine.isEmpty(), "c_name", machine)
+                .set(machine.isEmpty(), "c_name", null)
                 .update();
 
 
@@ -223,7 +224,7 @@ public class TCodeServiceImpl extends ServiceImpl<TCodeMapper, TCode>
                 .in("c_code", code)
                 .in("c_code", codes)
                 .set(!Objects.isNull(score), "c_score", score)
-                .set("c_name", machineCode)
+                .set("c_name", StrUtil.isEmptyIfStr(machineCode) ? null : machineCode)
                 .set(!isMany && !Objects.isNull(expiredTime), "c_expired", expiredTime).update();
 
 

@@ -23,7 +23,7 @@ public interface TUserService extends IService<TUser> {
     RestBean<String> loginUser(@Validated LoginUserVO vo, VInterfaceinfo interfaceInfo) throws NoSuchAlgorithmException;
 
     // 2-激活码登录
-    String loginCode(@Validated LoginCodeVO vo, VInterfaceinfo interfaceInfo);
+    RestBean<String> loginCode(@Validated LoginCodeVO vo, VInterfaceinfo interfaceInfo);
 
     // 3-获取最新版本
     ResponseVO getVersion(VInterfaceinfo interfaceInfo);

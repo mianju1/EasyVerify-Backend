@@ -39,6 +39,11 @@ public class VUserinfo implements Serializable {
     private Integer uStatus;
 
     /**
+     * 用户最近登陆时间
+     */
+    private Date uLastloginTime;
+
+    /**
      * 用户密码（SHA256）
      */
     @TableField(value = "u_password")
