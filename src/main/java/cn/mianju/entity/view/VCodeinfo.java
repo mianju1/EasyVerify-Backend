@@ -81,6 +81,18 @@ public class VCodeinfo implements Serializable {
     @TableField(value = "d_id")
     private String dId;
 
+    /**
+     * 激活码特殊类型：1-普通码 101-多用户码
+     */
+    @TableField(value = "c_special_type")
+    private Integer cSpecialType;
+
+    /**
+     * 特殊类型额外参数 json格式
+     */
+    @TableField(value = "c_special_extra_params")
+    private String cSpecialExtraParams;
+
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }

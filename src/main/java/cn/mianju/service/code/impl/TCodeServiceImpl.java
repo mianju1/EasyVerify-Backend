@@ -103,6 +103,8 @@ public class TCodeServiceImpl extends ServiceImpl<TCodeMapper, TCode>
             tCode.setCCode(key);
             tCode.setCScore(vo.getScores());
             tCode.setCCreatetime(currentDate);
+            tCode.setCSpecialType(vo.getCodeSpecialType());
+            tCode.setCSpecialExtraParams(vo.getExtraParams());
 
             if (vo.getIsActive()) {
                 tCode.setCUsetime(currentDate);

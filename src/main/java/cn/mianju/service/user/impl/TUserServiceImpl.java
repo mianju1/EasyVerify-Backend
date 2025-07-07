@@ -2,6 +2,7 @@ package cn.mianju.service.user.impl;
 
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.SecureUtil;
 import cn.mianju.annotation.FlowLimit;
 import cn.mianju.entity.EncryptInfo;
 import cn.mianju.entity.RestBean;
@@ -26,6 +27,7 @@ import cn.mianju.utils.EncryptUtils;
 import cn.mianju.utils.RedisUtils;
 import cn.mianju.utils.SnowflakeIdGenerator;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -35,9 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.validation.annotation.Validated;
 
 import java.security.NoSuchAlgorithmException;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -206,7 +206,7 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
 
 
         VUserinfo userinfo = vUserinfoService.query()
-                .select("u_id", "u_status", "c_score", "c_name")
+                .select("u_id", "u_status", "c_score", "c_name", "c_special_type", "c_special_extra_params")
                 .eq("u_name", username)
                 .eq("u_password", password)
                 .eq("s_id", sId)
@@ -237,12 +237,14 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         String mac = vo.getMac();
         String sId = interfaceInfo.getSId();
         Integer sVerifyMac = interfaceInfo.getSVerifyMac();
+        String redisMultipleKey = "multiple:sid:" + sId + "-" + "username:" + code;
+
 
         if (sVerifyMac.equals(1) && Objects.isNull(mac)) return RestBean.failure(400, "机器码不能为空");
         if (!interfaceInfo.getSCodetype().equals(2)) return RestBean.failure(400, "非激活码用户请使用账号登录");
 
         VCodeinfo one = vCodeinfoService.query()
-                .select("c_id", "c_score", "c_name", "c_usetime", "c_timetype")
+                .select("c_id", "c_score", "c_name", "c_expired", "c_special_type", "c_special_extra_params", "c_usetime", "c_timetype")
                 .eq("s_id", sId)
                 .eq("c_code", code)
                 .one();
@@ -251,10 +253,38 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
         if (Objects.isNull(one)) return RestBean.failure(400, "激活码有误");
         boolean isUsed = !Objects.isNull(one.getCUsetime());
 
-        if (sVerifyMac.equals(1) && (!Objects.isNull(one.getCName()) && !mac.equals(one.getCName())))
+        if (!one.getCSpecialType().equals(101)
+                && sVerifyMac.equals(1)
+                && (!Objects.isNull(one.getCName()) && !mac.equals(one.getCName())))
             return RestBean.failure(400, "机器码有误");
         if (one.getCScore().equals(0)) return RestBean.failure(400, "当前激活码已被禁用，请联系相关人员");
         if (isUsed && isExpiredCode(code, sId)) return RestBean.failure(400, "激活码已过期");
+
+        // 激活码特殊类型处理
+        JSONObject extraParams = null;
+        Integer cSpecialType = one.getCSpecialType();
+        if (!cSpecialType.equals(1)) {
+            extraParams = JSONObject.parseObject(one.getCSpecialExtraParams());
+        }
+
+        HashSet<String> cacheMacs = new HashSet<>();
+        switch (cSpecialType) {
+
+            // 多用户登陆
+            case 101:
+                if (Objects.isNull(extraParams)) return RestBean.failure(400, "激活码特殊类型参数有误");
+
+                // 缓存中查询当前账号已登录的机器码，并判断是否超出最大登陆数
+                String finalMac = mac;
+                redisUtils.lGet(redisMultipleKey, 0, -1)
+                        .stream()
+                        .filter(o -> !SecureUtil.md5(finalMac).equals(String.valueOf(o).split(":")[1]))
+                        .forEach(o -> cacheMacs.add(String.valueOf(o).split(":")[1]));
+
+                if (cacheMacs.size() >= extraParams.getInteger("userCount"))
+                    return RestBean.failure(400, "当前账号已达最大登录数");
+                break;
+        }
 
         boolean update = false;
 
@@ -274,6 +304,19 @@ public class TUserServiceImpl extends ServiceImpl<TUserMapper, TUser>
             // 生成id码，并返回
             String idCode = createIdCode();
             boolean b = setIdCode(sId, one.getCName(), idCode);
+
+            // 多用户登陆缓存设置
+            if (b && cSpecialType.equals(101) && cacheMacs.size() == redisUtils.lGetListSize(redisMultipleKey)) {
+                Integer expireTimeHour = extraParams.getInteger("expireTimeHour");
+                expireTimeHour = Objects.isNull(expireTimeHour) ? 24 : expireTimeHour;
+                long cExpired = one.getCExpired().getTime();
+
+                // 缓存当前登陆的机器码，并设置过期时间
+                redisUtils.lSet(
+                        redisMultipleKey,
+                        idCode + ":" + SecureUtil.md5(mac) + ":" + System.currentTimeMillis(),
+                        expireTimeHour.equals(0) ? (cExpired - System.currentTimeMillis()) / 1000 : expireTimeHour * 60 * 60);
+            }
 
             return b ? RestBean.success(idCode, "登陆成功") : RestBean.failure(400, "登录失败");
         }

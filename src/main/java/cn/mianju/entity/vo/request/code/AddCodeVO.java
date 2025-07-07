@@ -37,4 +37,10 @@ public class AddCodeVO {
     @NotNull
     Integer scores;
 
+    // 特殊类型
+    @NotNull
+    Integer codeSpecialType;
+
+    // 额外参数
+    String extraParams;
 }
